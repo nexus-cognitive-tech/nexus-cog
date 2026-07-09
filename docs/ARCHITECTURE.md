@@ -7,146 +7,120 @@
 │  Interfaces: MCP server · CLI binary                        │
 │  (every CLI subcommand is also an MCP tool)                  │
 ├──────────────────────────────────────────────────────────────┤
-│  Engines: palace · brain · causal · cognitive                │
-│           patterns · provenance · intel                      │
-│           intent · antifragile                              │
+│  Brain: nexus-cog-neural — Cortex orchestrator              │
+│  (thalamus · hippocampus · cortical hierarchy · basal       │
+│   ganglia · amygdala · working memory · attention ·         │
+│   neuromodulators · global workspace · sleep cycle ·        │
+│   replay buffer)                                            │
+├──────────────────────────────────────────────────────────────┤
+│  Orthogonal engines: causal · provenance · patterns ·       │
+│  antifragile                                                │
 ├──────────────────────────────────────────────────────────────┤
 │  Foundation: core (types · store · config)                   │
+│            embeddings                                       │
 └──────────────────────────────────────────────────────────────┘
 ```
 
 Every layer depends only on layers below it. Foundation has no internal
-dependencies; engines depend on core; interfaces depend on engines and
-core.
+dependencies; engines depend on core; the cortex depends on core;
+orthogonal engines depend on core and storage; the CLI depends on every
+layer above.
 
-## Engines
+## Brain: nexus-cog-neural
 
-### Palace (`nexus-cog-palace`)
+A single orchestrator ([`Cortex`]) replaces the historical
+palace/brain/cognitive/intel/intent engines. Every brain-like cognitive
+operation goes through this crate.
 
-Room-based memory model. Each room is a category (concept, pattern,
-decision, bug, learning, tool, user, project); items inside rooms are
-individual memories; connections between rooms form the conceptual
-graph.
+| Subsystem | Module | Role |
+| --- | --- | --- |
+| SDR | [`sdr`] | 2048-bit sparse distributed representations + encoders. |
+| Spatial pooler | [`region::spatial_pooler`] | Hebbian input → stable SDR. |
+| Temporal memory | [`region::temporal_memory`] | Predicts the next SDR. |
+| Region + Hierarchy | [`region::region`], [`region::hierarchy`] | DAG of cortical columns. |
+| Thalamus | [`thalamus`] | Sensory relay + gating by salience × attention. |
+| Hippocampus | [`hippocampus`] | Fast, capacity-bounded episodic memory. |
+| Sleep cycle | [`sleep`] | NREM replay + REM re-activation. |
+| Basal ganglia | [`basal_ganglia`] | Action selection via winner-take-all. |
+| Amygdala | [`amygdala`] | 3-D valence (reward/threat/novelty). |
+| Working memory | [`working_memory`] | Miller's 7±2 slots. |
+| Attention | [`attention`] | Top-down + bottom-up spotlight. |
+| Neuromodulators | [`neuromodulators`] | Dopamine / serotonin / norepinephrine. |
+| Global workspace | [`global_workspace`] | Coalition selection. |
+| Replay buffer | [`replay`] | Tick recording for Studio viz. |
 
-### Brain (`nexus-cog-brain`)
+## Orthogonal engines
 
-Static analysis: code verification (8-check adaptive), risk
-classification, semantic search, architecture analysis, semantic diff,
-A/B hypothesis testing with a real decision matrix.
+These engines are kept as separate crates because they implement
+specialised analyses that don't belong in the cortex.
 
-### Causal (`nexus-cog-causal`)
-
-Directed causal graph with forward / backward traversal, blast-radius,
-counterfactual analysis and pre-mortem scenarios derived from the live
-graph.
-
-### Cognitive (`nexus-cog-cognitive`)
-
-6-phase scaffold protocol (Understand → Analyze → Design → Implement →
-Verify → Reflect), thought chains, response analysis, and the Cognitive
-Mirror (audit of an agent's reasoning chain).
-
-### Patterns (`nexus-cog-patterns`)
-
-Code-pattern matching and recommendation.
-
-### Provenance (`nexus-cog-provenance`)
-
-Artifact lineage graph with SHA-256 content hashing, short-id /
-fuzzy record lookup, and structured record / explain / search.
-
-### Intel (`nexus-cog-intel`)
-
-Long-term memory with **hybrid BM25 + FTS5 + recency + importance**
-ranking; adaptive learner with structured `suggest_approach`
-responses (never `null`).
-
-### Intent (`nexus-cog-intent`)
-
-Module purpose declaration plus a real **security / intent drift
-detector**: hard-coded credentials, weak crypto (MD5 / SHA1), JWT
-bypass (`alg=none`, `verify=false`, empty `kid`), SQL / shell injection
-sinks, missing error handling on security paths, missing authorisation
-on public mutators. Detector findings fold into the per-module IPI
-(Intent Preservation Index).
-
-### Antifragile (`nexus-cog-antifragile`)
-
-Adversarial input generation (paginated, category-filtered), edge-case
-exploration, robustness scoring.
+* **nexus-cog-causal** — directed causal graph, forward / backward
+  traversal, blast-radius, counterfactual and pre-mortem.
+* **nexus-cog-provenance** — artifact lineage with SHA-256 content
+  hashing and short-id / fuzzy record lookup.
+* **nexus-cog-patterns** — code-pattern matching and recommendation.
+* **nexus-cog-antifragile** — adversarial input generation, edge-case
+  exploration, robustness scoring.
 
 ## Foundation
 
-### Core (`nexus-cog-core`)
-
-Shared types, serde-friendly representations, store primitives, runtime
-configuration.
-
-### Storage (`nexus-cog-storage`)
-
-The only crate that depends on `rusqlite`. Every other engine uses
-`PersistenceBackend` (or `TransactionalBackend`) so the storage
-technology can change without rippling outwards.
-
-### Embeddings (`nexus-cog-embeddings`)
-
-Pluggable text encoders (`Embedder` trait) and a SQLite-backed vector
-store.
+* **nexus-cog-core** — shared types, serde-friendly representations,
+  store primitives, runtime configuration.
+* **nexus-cog-embeddings** — pluggable text encoders + vector store.
+* **nexus-cog-storage** — the only crate that depends on `rusqlite`.
 
 ## Interfaces
 
 ### CLI binary (`nexus-cog-cli`)
 
-Clap subcommands, one per engine. Every subcommand also doubles as an
-MCP tool — single source of truth via `nexus_cog_cli::commands::*`.
+Every brain-related subcommand (`palace`, `brain`, `cognitive`,
+`intel`, `intent`) is a thin wrapper over the cortex. Every orthogonal
+subcommand (`causal`, `provenance`, `patterns`, `antifragile`,
+`backup`, `decay`, `repl`) delegates to its own engine.
 
 ### MCP server
 
-Run `nexus-cog mcp` to expose all 32 tools over stdio. The server is a
-thin wrapper around the same `commands::*` functions used by the CLI,
-so there is one implementation per tool.
+Run `nexus-cog mcp` to expose every tool over stdio. Each MCP tool is a
+thin wrapper around the same `commands::*` function used by the CLI.
 
 ## Persistence
 
 ### Per-workspace DB
 
-By default the database lives at `<workspace>/.nexus-cog/palace.db`
-where `<workspace>` is the directory supplied via `--workspace`
+The SQLite database lives at `<workspace>/.nexus-cog/palace.db` where
+`<workspace>` is the directory supplied via `--workspace`
 (`NEXUS_COG_WORKSPACE`) or, failing that, the current working directory.
-The previous global default (`~/.local/share/nexus-cog/palace.db`)
-leaked state across unrelated agents and has been removed.
+The cortex itself is in-memory; the orthogonal persistent engines
+(causal graph, provenance, patterns) share the same SQLite file via
+`PersistenceBackend`.
 
-### Schema ownership
+## Memory model
 
-Each engine owns its tables and registers its schema through
-`PersistenceBackend::apply_migrations`. The backend tracks applied
-migrations in `engine_migrations (owner, version)` so re-opening the DB
-is idempotent.
+The cortex holds:
 
-## Multi-namespace
+* a **thalamus** with N channels of sensory input;
+* a **hierarchy** of cortical regions (each region is `SP ∘ TM`);
+* a **hippocampus** of capacity-bounded episodic memory;
+* a **working memory** of 7±2 SDR slots with active maintenance;
+* a **basal ganglia** that selects the next action;
+* an **amygdala** that tags every event with valence;
+* a **global workspace** that broadcasts the winning coalition;
+* **neuromodulators** that tune learning rate, attention width and
+  risk-aversion;
+* a **replay buffer** that records every tick for Studio.
 
-Each SQLite database holds many palaces scoped by `palace_id`. One
-palace is the default namespace; others can be created via
-`PersistentPalace::new(backend, "name")` or `ensure_palace()`.
+### `palace_recall`
 
-## Recall
-
-### Palace (`palace_recall`)
-
-BM25 (Robertson / Zaragoza defaults: `k1 = 1.5`, `b = 0.75`)
+BM25 (Robertson / Zaragoza defaults: `k1 = 1.5`, `b = 0.75`) over the
+combined `(key, value, tags)` corpus of every hippocampal episode,
 re-weighted with confidence: `0.8 * normalised_bm25 + 0.2 * confidence`.
 
-### Intel (`intel_recall`)
+### `intel_recall`
 
 Three-stage pipeline:
 1. SQLite FTS5 BM25 candidate set (best 4× limit).
-2. Jaccard / coverage re-rank over `(key, value, tags)` so every
-   matched query token boosts the score.
-3. Importance + recency boost so freshly-touched, important entries
-   surface above equally-relevant ancient ones.
-
-All three bump the access counter and stamp `last_accessed` on recall,
-so popular items survive decay.
+2. Jaccard / coverage re-rank over `(key, value, tags)`.
+3. Importance + recency boost.
 
 ## Security / drift detection
 
@@ -157,41 +131,32 @@ handling on security paths, missing authorisation). Each finding is
 classified, weighted by severity, and folded into the per-module IPI:
 
 ```
-ipi = max(0, 100 - penalty_score(findings, strict))
+ipi = 0.7 × (100 - penalty_score(findings, strict))
+    + 0.3 × amygdala_signal × 100
 penalty_score(finding) = severity_weight(finding.severity)
   Critical=20, Error=14, High=10, Warning=6, Medium=4, Low=2, Info=0 (1 in strict mode)
 ```
 
-The result is never `0` without reason: even an empty drift set
-yields `ipi = 100`, and a single `Critical` finding caps the score at
-`80`.
-
 ## Workspace layout
 
-The repository is a poly-repo: every `nexus-cog-*/` directory is its
-own independent git repository (`nexus-cog-*/.git`). The poly-repo
-root `nexus-cognitive-tech/` is **not** a git repository — it is the
-directory under which every member crate is checked out.
+The poly-repo root `nexus-cognitive-tech/` is **not** a git repository —
+each `nexus-cog-*/` directory is its own independent git checkout.
 
 ```
 nexus-cognitive-tech/                  ← plain directory, not a repo
 ├── nexus-cog-core/        (.git)
 ├── nexus-cog-storage/     (.git)
 ├── nexus-cog-embeddings/  (.git)
-├── nexus-cog-palace/      (.git)
-├── nexus-cog-brain/       (.git)
-├── nexus-cog-cognitive/   (.git)
+├── nexus-cog-neural/      (.git)        ← brain-like cortex
 ├── nexus-cog-causal/      (.git)
 ├── nexus-cog-patterns/    (.git)
 ├── nexus-cog-provenance/  (.git)
-├── nexus-cog-intel/       (.git)
-├── nexus-cog-intent/      (.git)
 ├── nexus-cog-antifragile/ (.git)
 ├── nexus-cog/             (.git)        ← meta repo, docs only
 └── nexus-cog-cli/         (.git)        ← binary
 ```
 
-Sibling git dependencies (`nexus-cog-core = { git = "...", tag = "..." }`)
+Sibling git dependencies (`nexus-cog-core = { git = "...", tag = "..."}`)
 keep each member crate independently buildable. The CLI builds from
 `nexus-cog-cli/` against sibling `path` deps; to restore the upstream
 git deps for a release build, swap the `path =` lines in
@@ -210,9 +175,11 @@ git deps for a release build, swap the `path =` lines in
 # Build the CLI binary
 cd nexus-cog-cli && cargo build --bin nexus-cog
 
-# Test a single engine crate
-cd nexus-cog-intel && cargo test --lib
+# Test the cortex
+cd nexus-cog-neural && cargo test --lib
 
-# Test everything (run from nexus-cog-cli)
-cd nexus-cog-cli && cargo test --lib
+# Test everything
+for d in nexus-cog-{core,storage,embeddings,neural,causal,patterns,provenance,antifragile,cli}; do
+  (cd $d && cargo test --lib)
+done
 ```
