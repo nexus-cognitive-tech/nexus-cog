@@ -30,22 +30,28 @@ layer above.
 
 A single orchestrator ([`Cortex`]) replaces the historical
 palace/brain/cognitive/intel/intent engines. Every brain-like cognitive
-operation goes through this crate.
+operation goes through this crate. The architecture is built around
+**eight biologically-inspired subsystems** that work together on
+every tick:
 
 | Subsystem | Module | Role |
 | --- | --- | --- |
-| SDR | [`sdr`] | 2048-bit sparse distributed representations + encoders. |
-| Spatial pooler | [`region::spatial_pooler`] | Hebbian input → stable SDR. |
-| Temporal memory | [`region::temporal_memory`] | Predicts the next SDR. |
-| Region + Hierarchy | [`region::region`], [`region::hierarchy`] | DAG of cortical columns. |
+| Spike coding | [`spike`] | Replaces continuous SDR activation with sparse temporal codes — spike trains, phase-aligned oscillation, first-spike latency. |
+| Synapse + plasticity | [`synapse`] | Permanence, eligibility traces, three-factor Hebbian LTP / LTD gated by local neuromodulator concentration. |
+| Astrocyte network | [`astrocyte`] | Tripartite synapse glia — calcium waves, gliotransmitter release, global gliosis pressure. |
+| Neurogenesis | [`neurogenesis`] | Birth / apoptosis controller — novelty × dopamine × NE gates new columns; sustained low permanence prunes old ones. |
+| Cortical column (6 layers) | [`cortical_column`] | Canonical microcircuit (L1 apical context, L2/3 associatives, L4 thalamic input, L5 output, L6 feedback, lateral L2/3). |
+| Recurrent hierarchy | [`hierarchy`] | DAG of columns with bottom-up, top-down and lateral recurrence. |
+| Sensorimotor loop | [`sensorimotor`] | Perception → action → perception cycle with explicit LoopPhase and PredictionError per tick. |
+| SDR (legacy helper) | [`sdr`] | 2048-bit sparse distributed representations — used as a hash-based text → SDR helper. |
 | Thalamus | [`thalamus`] | Sensory relay + gating by salience × attention. |
 | Hippocampus | [`hippocampus`] | Fast, capacity-bounded episodic memory. |
-| Sleep cycle | [`sleep`] | NREM replay + REM re-activation. |
+| Sleep cycle | [`sleep`] | NREM replay + REM re-activation on the spike-based hierarchy. |
 | Basal ganglia | [`basal_ganglia`] | Action selection via winner-take-all. |
 | Amygdala | [`amygdala`] | 3-D valence (reward/threat/novelty). |
 | Working memory | [`working_memory`] | Miller's 7±2 slots. |
 | Attention | [`attention`] | Top-down + bottom-up spotlight. |
-| Neuromodulators | [`neuromodulators`] | Dopamine / serotonin / norepinephrine. |
+| Neuromodulators | [`neuromodulators`] | Dopamine / serotonin / norepinephrine global signals. |
 | Global workspace | [`global_workspace`] | Coalition selection. |
 | Replay buffer | [`replay`] | Tick recording for Studio viz. |
 
@@ -99,12 +105,24 @@ The cortex itself is in-memory; the orthogonal persistent engines
 The cortex holds:
 
 * a **thalamus** with N channels of sensory input;
-* a **hierarchy** of cortical regions (each region is `SP ∘ TM`);
+* a **hierarchy** of six-layer cortical columns (L1, L2/3, L4, L5, L6)
+  with full bottom-up / top-down / lateral recurrence;
+* a **spiking population** per layer — phase-aligned spike trains
+  replace continuous SDR activations;
+* a **synaptic fan-out** per projection — permanence, eligibility,
+  three-factor Hebbian plasticity modulated by local dopamine /
+  serotonin / norepinephrine;
+* an **astrocyte network** — one glia cell per column, slow
+  calcium-wave coupling, gliotransmitter release boosts plasticity;
+* a **neurogenesis controller** — births and prunes columns based
+  on novelty × dopamine × NE gated by sustained low permanence;
 * a **hippocampus** of capacity-bounded episodic memory;
 * a **working memory** of 7±2 SDR slots with active maintenance;
 * a **basal ganglia** that selects the next action;
 * an **amygdala** that tags every event with valence;
 * a **global workspace** that broadcasts the winning coalition;
+* a **sensorimotor loop** that closes perception → action →
+  perception and reports prediction error per tick;
 * **neuromodulators** that tune learning rate, attention width and
   risk-aversion;
 * a **replay buffer** that records every tick for Studio.
